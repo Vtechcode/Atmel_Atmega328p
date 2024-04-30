@@ -1,0 +1,40 @@
+void USART_Transmit(char data)
+{
+	uint16_t  temp = 0; //Temporary Storage (16bit)
+	
+	uint8_t   Ones_Position = 0; // 8 bit variables to be send using usart
+	uint8_t   Tens_Position = 0;
+	uint8_t   Hundreths_Position = 0;
+	uint8_t   Thousands_Position = 0;
+	
+	temp = data;
+	
+	Ones_Position      = temp % 10; // Eg 1023 % 10  -> Remainder -> 3
+	temp = temp/10;                // Eg temp = 1023/10 ->102
+	Tens_Position      = temp % 10;// Eg 102  % 10  -> Remainder -> 2
+	temp = temp/10;                 // Eg temp = 102/10 ->10
+	Hundreths_Position = temp % 10;  // Eg 10   % 10  -> Remainder -> 0
+	Thousands_Position = temp / 10;  // Eg 10   / 10  -> Quotient  -> 1
+	
+	
+	//ASCII Conversion
+	Ones_Position      += 0x30;
+	Tens_Position      += 0x30;
+	Hundreths_Position += 0x30;
+	Thousands_Position += 0x30;
+	
+	//Sending the 4 digit number to PC using USART
+	
+	while (!( UCSR0A & (1<<UDRE0)));  // Wait for empty transmit buffer
+	UDR0 = Thousands_Position;        // Put data into buffer, sends the data
+	
+	while (!( UCSR0A & (1<<UDRE0)));  // Wait for empty transmit buffer
+	UDR0 = Hundreths_Position;        // Put data into buffer, sends the data
+	
+	while (!( UCSR0A & (1<<UDRE0)));  // Wait for empty transmit buffer
+	UDR0 = Tens_Position;             // Put data into buffer, sends the data
+	
+	while (!( UCSR0A & (1<<UDRE0)));  // Wait for empty transmit buffer
+	UDR0 = Ones_Position;             // Put data into buffer, sends the data
+	
+}
