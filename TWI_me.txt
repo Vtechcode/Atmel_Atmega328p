@@ -1,0 +1,145 @@
+/*
+ * twi_lcd.c
+ *
+ * Created: 5/1/2024 12:58:49 PM
+ * Author : Vick
+ */ 
+
+#include <avr/io.h>
+#include <util/delay.h>
+#include <stdio.h>
+#include <stdlib.h>
+#define F_CPU 16000000UL
+#define BAUD 9600 //Define baud rate
+#define SCL_FRQ F_CPU/(BAUD + 1)
+
+#define D0 eS_PORTD0
+#define D1 eS_PORTD1
+#define D2 eS_PORTD2
+#define D3 eS_PORTD3
+#define D4 eS_PORTD4
+#define D5 eS_PORTD5
+#define D6 eS_PORTD6
+#define D7 eS_PORTD7
+#define RS eS_PORTC6
+#define EN eS_PORTC7
+
+
+unsigned char rec_data, write_data=0x01;
+
+void TWI_init_master(void) // function to initialize master
+{
+	TWBR = 0X01; // bitrate
+	TWSR = (0 << TWPS1) | (0 << TWPS0); // setting prescalar bits
+}
+
+void TWI_start(void) // send start condition
+{
+	// Clear TWI interrupt flag, put start condition on SDA, Enable TWI
+	TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN);
+	while(!(TWCR & (1 << TWINT))); // Wait till start condition is transmitted
+	while((TWSR & 0XF8) != 0X08); //check for the acknowledgement
+}
+
+void TWI_read_address(unsigned char data)// send the slave address data direction bit  and wait for the ACK signal
+{
+	TWDR = data; //Address and read instruction
+	TWCR = (1 << TWINT) | (1 << TWEN); // clear TWI interrupt flag, Enable TWI
+	while(!(TWCR & (1 << TWINT))); // Wait till complete TWDR byte received
+	while((TWSR & 0xF8) != 0x40); //check for the acknowledgement
+}
+
+void TWI_write_data(unsigned char data) // send the 8 bit data and wait for the ACK
+{
+	TWDR = data; // put data in TWDR
+	TWCR = (1 << TWINT) | (1 << TWEN); //clear TWI interrupt flag, Enable TWI
+	while(!(TWCR & (1 << TWINT))); // Wait till TWDR byte is transmitted
+	while((TWSR & 0xF8) != 0x28); //check for the acknowledgement
+}
+
+void TWI_stop(void) //send the STOP condition
+{
+	//Clear TWI interrupt flag, put stop condition on SDA, Enable Enable TWI
+	TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWSTO);
+	while(!(TWCR & (1 << TWSTO))); // wait till stop condition is transmitted
+}
+
+
+const char* TWI_read_data(void) //Read data from SDA bus
+{
+	
+	TWCR = (1 << TWINT) | (1 << TWEN); // clear TWI interrupt flag, Enable TWI
+	while(!(TWCR & (1 << TWINT))); // Wait till complete TWDR byte transmitted
+	while((TWDR & 0xF8) != 0x58); // check for the acknowledgment
+	rec_data = TWDR;
+	return rec_data;
+}
+
+
+void TWI_init_slave(void) // Function to initialize slave by assigning address to the slave
+{
+	TWAR = 0x20; // Fill slave address to TWAR
+}
+
+void TWI_match_read_slave(void) //Function to match the slave address and slave direction bit(read)
+{
+	/* If the value of TWSR is 0x60, it means the data sent by the master in the next 
+	step is meant to be read by this particular slave only and the slave sends
+	back the acknowledgment to the master corresponding to the read operation*
+	If the TWSR status is 0x70 the slave is requested to read the data at the general call */
+	
+	while((TWSR & 0xF8) != 0x60) // Loop till correct acknowledgment has been received
+	{
+		// Get acknowledgment, Enable TWI, clear TWI interrupt flag
+		TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWINT);
+		while(!(TWCR & (1 << TWINT))); // wait for TWINT flag
+	}
+}
+
+const char* TWI_read_slave(void) // read data sent by the MASTER
+{
+	// Clear TWI interrupt flag, Get acknowledgment, Enable TWI
+	TWCR = (1 << TWINT) | (1 << TWEA) | (1 << TWEN);
+	while(!(TWCR & (1 << TWINT))); // wait for TWINT flag
+	while((TWSR & 0xF8) != 0x80); // wait for acknowledgment
+	rec_data = TWDR; // Get value from TWDR
+	return rec_data;
+	
+}
+
+void TWI_match_write_slave(void) //Function to match the slave address and slave direction bit(write)
+{
+	/* If the value of TWSR is 0xA8. It means the master wants to receive data from the particular
+	slave and the slave sends back the acknowledgment to the master corresponding to the write
+	operation */
+	while((TWSR & 0XF8) != 0xA8) // Loop till correct acknowledgment has been received
+	{
+		// Get acknowledgment, Enable TWI, Clear TWI interrupt flag
+		TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWINT);
+		while(!(TWCR & (1 << TWINT))); // wait for TWINT flag
+	}
+}
+
+void TWI_write_slave(void) //Function to write data
+{
+	TWDR = write_data // Fill TWDR register with the data to be sent
+	TWCR = (1 << TWEN) | (1 << TWINT); // Enable TWI, clear TWI interrupt flag
+	while((TWSR & 0xF8) != 0xC0); // wait for the acknowledgment
+}
+
+int main(void)
+{
+	TWI_init_master();
+	TWI_init_slave();
+		DDRD = 0xFF;
+		DDRC = 0xFF;
+	
+    /* Replace with your application code */
+    while (1) 
+    {
+		TWI_start()
+		TWI_read_address(0x20);
+		
+    }
+}
+
